@@ -1,0 +1,425 @@
+<!doctype.html>
+	<html>
+
+	<head>
+		<title>NeuronOPEN</title>
+		<style>
+			* {
+				font-family: Helvetica, sans-serif;
+			}
+
+			body {
+				background-color: #221003;
+				color: #fff;
+			}
+
+			h1.title {
+				text-align: center;
+				text-shadow: 4px 9px rgba(200, 200, 200, .4);
+
+
+			}
+
+			.player {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				flex-direction: column;
+				gap: 10px;
+			}
+
+			.player button {
+				padding: 15px;
+				border-radius: 8px;
+				border: 2px solid transparent;
+				cursor: pointer;
+			}
+
+			.player button:hover {
+				box-shadow: 5px 7px 9px rgba(0, 0, 0, 0.75);
+			}
+
+			.audioSlider {
+				margin-top: 15px;
+				width: 700px;
+				height: 4px;
+				border-radius: 4px;
+				background: rgba(255, 255, 255, 0.3);
+
+			}
+
+			.audioSlider .lengthSlide {
+				height: 100%;
+				background: gold;
+				transition: 200ms;
+				width:0;
+			}
+
+			.fileDescription {
+				margin-bottom: 10px;
+			}
+		</style>
+	</head>
+
+	<body>
+		<h1 class="title">NeuronOPEN-UNLESS IT IS NOT A FILE</h1>
+
+		<div class="player">
+
+			<button onclick="selectSingleFile()">Select a single file</button>
+
+			<button onclick="selectDirectory()">Select directory</button>
+
+			<div class="fileDescription">
+
+			</div>
+
+
+
+		</div>
+	</body>
+	<script type="module" src="utils/ExifReader-main/dist/exif-reader.js" crossOrigin="anonymous"></script>
+	<script type="text/javascript">
+		const descriptionSlot = document.querySelector(".fileDescription")
+
+		let audio
+		let video
+		let img
+
+		async function selectSingleFile() {
+			const [handle] = await window.showOpenFilePicker()
+			const file = await handle.getFile()
+
+
+
+			const template = `	
+					<h1> ${file.name} </h1> 
+					<div class="details">
+					<p>Last modified:${new Date(file.lastModified).toUTCString()}</p>
+					<p> Size: ${Math.round(
+				/* File size is in bytes first convert to KB before mb */
+				file.size / (1024 * 1024))}MB</p>
+					<p> Type: ${file.type} </p>
+						<button id="opener"> Open </button>
+					</div>`
+
+			descriptionSlot.innerHTML = template
+			descriptionSlot.querySelector("#opener").onclick = e => {
+				openFile(file)
+				e.target.remove()
+			}
+
+
+
+
+
+
+		}
+		let url
+		function openFile(fileArg) {
+			if (audio && !audio.paused) {
+
+				audio.pause()
+				audio = undefined
+			}
+			if (video && !video.paused) {
+
+				video.pause()
+				video = undefined
+			}
+			URL.revokeObjectURL(url)
+			console.log("from openFile", fileArg)
+			const audioTypes = {
+				functionParam: openAudio,
+				extensions: ["audio/mpeg", "audio/mp3"]
+			}
+			const pdfTypes = {
+				functionParam: openPDF,
+				extensions: [""]
+			}
+			const imageTypes = {
+				functionParam: openImage,
+				extensions: ["image/png", "image/jpeg", "image/jpg", "image/gif"]
+			}
+			const videoTypes = {
+				functionParam: openVideo,
+				extensions: ["video/mp4"]
+			}
+			if (fileArg.type == "") {
+				alert("Sorry the file extension is not supported")
+			}
+			else if (audioTypes.extensions.includes(fileArg.type)) {
+				audioTypes.functionParam(fileArg)
+			} else if (pdfTypes.extensions.includes(fileArg.type)) {
+				pdfTypes.functionParam(fileArg)
+			}
+			else if (imageTypes.extensions.includes(fileArg.type)) {
+				imageTypes.functionParam(fileArg)
+			}
+			else if (videoTypes.extensions.includes(fileArg.type)) {
+				videoTypes.functionParam(fileArg)
+			} else {
+				window.alert("Sorry couldn't find a suitable way to open the file's extension(" + fileArg.type + ")")
+			}
+		}
+
+
+		function openPDF() {
+
+		}
+
+
+		async function openImage(imageArg) {
+			img = new Image()
+			url = URL.createObjectURL(imageArg)
+			img.src = url
+
+			img.style.width = "90vw"
+			img.style.minHeight = "50vh"
+			img.style.borderRadius = "10px"
+
+			const template = document.createElement("template")
+			template.classList.add("table__container")
+			const table = document.createElement("table")
+			const tags = await ExifReader.load(imageArg, { expanded: false })
+			console.log(tags)
+			const thData = `<tr>
+			<th>Property</th>
+			<th>Value</th>
+			</tr>`
+			table.innerHTML = thData
+			for (const tag in tags) {
+				const tr = document.createElement("tr")
+
+				const tData = `
+		<style>
+
+			.table__container{
+			display:flex;
+			alig-items:center;
+			justify-content:center;
+			flex-direction:column;
+			width:50vw;
+			margin:auto;
+			}
+			table{
+			
+			border:solid 1px;
+			border-collapse:collapse;
+			}
+			tr,td{
+			padding:20px;
+			border:solid 1px;
+			}
+
+			</style>
+		
+		<td>${tag}</td>
+		<td>${tags[tag].description}</td>
+		`
+
+				tr.innerHTML += tData
+				table.appendChild(tr)
+			}
+
+			template.appendChild(table)
+			Array.from(descriptionSlot.children).forEach(child => child.remove())
+			descriptionSlot.appendChild(img)
+			descriptionSlot.appendChild(template)
+			descriptionSlot.scrollIntoView({ behavior: "smooth", block: "start" })
+		}
+
+
+		function openAudio(audioArg) {
+
+			console.log("from open audio")
+			if (audioArg) {
+
+
+				audio = new Audio()
+				url = URL.createObjectURL(audioArg)
+				audio.src = url
+
+
+
+
+				audio.onloadeddata = e => {
+
+					let audioMin = Math.round(audio.duration / 60)
+					let audioSecs = Math.round(audio.duration % 60)
+					let audioDuration = `${audioMin}:${audioSecs}`
+					const controlTemplate = `
+				<div id="controller">
+		<button id="startAudio"> Play audio</button>
+		<button id="pauseAudio"> Pause Audio</button>
+		<input type="range" id="volumeSlider" value=${audio.volume * 100}/>
+		<div class="audioSlider">
+		<div class="lengthSlide"></div>
+		<div class="timer" style="border-top:solid 1px #fff;display:flex;;justify-content:space-between">
+			<p id="currentTime">
+				0:00
+				</p>
+			<p>${audioDuration}</p>
+			</div>
+		</div>
+		</div>
+		`
+
+
+					Array.from(descriptionSlot.children).forEach(child => child.remove())
+ 
+
+					descriptionSlot.insertAdjacentHTML("afterBegin", controlTemplate)
+					descriptionSlot.querySelector("#startAudio").onclick = () => audio.play()
+					descriptionSlot.querySelector("#startAudio").onclick = () => audio.play()
+
+					descriptionSlot.querySelector("#volumeSlider").onchange = (e) => audio.volume = e.target.value / 100
+					document.querySelector(".player").scrollIntoView({ behavior: "smooth", block: "center" })
+
+
+				}
+
+			}
+			audio.ontimeupdate = e => {
+				let currentAudioMin = Math.round(audio.currentTime / 60)
+				let currentAudioSecs = Math.round(audio.currentTime % 60)
+				let currentAudioDuration = `${currentAudioMin}:${currentAudioSecs<10?`0${currentAudioSecs}`:currentAudioSecs}`
+				descriptionSlot.querySelector("#currentTime").innerText = currentAudioDuration
+
+
+
+				descriptionSlot.querySelector(".lengthSlide").style.width = (Math.round(audio.currentTime) / Math.round(audio.duration) * 100 + "%")
+			}
+		}
+
+
+
+		function openVideo(videoArg) {
+
+			video = document.createElement("video")
+			video.style.border = "solid 3px #fff"
+			url = URL.createObjectURL(videoArg)
+			video.src = url
+
+			video.style.width = "90vw"
+			video.style.height = "50vh"
+			video.playsinline = true
+
+			video.onloadeddata = e => {
+
+				let videoMin = Math.round(video.duration / 60)
+				let videoSecs = Math.round(video.duration % 60)
+				let videoDuration = `${videoMin}:${videoSecs}`
+
+
+
+				console.log("loaded video")
+				const controlTemplate = `
+				<div id="controller">
+		<button id="startvideo"> Play video</button>
+		<button id="pausevideo"> Pause video</button>
+		<input type="range" id="volumeSlider" value=${video.volume * 100}/>
+		<div class="videoSlider">
+		<div class="lengthSlide"></div>
+		<div class="timer" style="border-top:solid 1px #fff;display:flex;;justify-content:space-between">
+			<p id="currentTime">0:00</p>
+			<p>${videoDuration}</p>
+			</div>
+			</div>
+		</div>
+		`
+				Array.from(descriptionSlot.children).forEach(child => child.remove())
+				descriptionSlot.appendChild(video)
+				descriptionSlot.insertAdjacentHTML("beforeEnd", controlTemplate)
+				descriptionSlot.querySelector("#startvideo").onclick = () => video.play()
+				descriptionSlot.querySelector("#pausevideo").onclick = () => video.pause()
+				descriptionSlot.querySelector("#volumeSlider").onchange = (e) => video.volume = e.target.value / 100
+				descriptionSlot.scrollIntoView({ behavior: "smooth", block: "start" })
+
+
+
+			}
+			video.ontimeupdate = e => {
+				let currentVideoMin = Math.round(video.currentTime / 60)
+				let currentVideoSecs = Math.round(video.currentTime % 60)
+				let currentVideoDuration = `${currentVideoMin}:${currentVideoSecs}`
+				descriptionSlot.querySelector("#currentTime").innerText = currentVideoDuration
+				descriptionSlot.querySelector(".lengthSlide").style.width = (Math.round(video.currentTime) / Math.round(video.duration) * 100 + "%")
+			}
+
+
+
+
+
+
+
+
+
+
+
+
+		}
+
+
+		async function selectDirectory() {
+
+			const openedDirectoryHandle = await window.showDirectoryPicker()
+
+
+
+
+			async function recursiveFileGetter(dirHandle) {
+
+				const files = []
+				const dirs = []
+				async function getFiles(dirHandle) {
+					/* The reason we also have a separate variable for the dirs
+				 though after calling the if(hadle=file) it pushes it to the files array
+				 we need to that that because the getFiles funciton returns the files array as a result
+				 of the operation and so in the else where we are doing the recursive call we need to do that
+				 of getting a variable and awaiting th value of what we get back else it would be like 
+				 we pass the arguments to the getFiles function but we are not receiving its 
+				 output which is the result of recursively narrowing donw the folders.
+				
+				*/
+					for await (const handle of dirHandle.values()) {
+						if (handle.kind == "file") {
+							const fileHandle = await handle.getFile()
+							let nestedPath = `${dirHandle.name}/${fileHandle.name}`
+
+							Object.defineProperty(fileHandle, "webkitRelativePath", {
+								configurable: true,
+								enumerable: true,
+								get: () => { return nestedPath }
+							})
+							files.unshift(fileHandle)
+						} else {
+							const files = await getFiles(handle)
+							dirs.push(files)
+						}
+					}
+					return files
+
+				}
+				await getFiles(dirHandle)
+				return [...files, ...dirs.flat()]
+			}
+			const files = await recursiveFileGetter(openedDirectoryHandle)
+			const fileList = files.map(file => {
+
+				const div = document.createElement("div")
+				div.innerHTML = `<div class="dirHandleRow" style="border:solid 1px #fff;display:flex;justify-content:space-between;"><h3 style="padding:10px;">${file.name}</h3><button id="opener">Open</div>`
+				div.querySelector("#opener").onclick = e => {
+					openFile(file)
+				}
+				return div
+
+			})
+			Array.from(document.querySelectorAll(".dirHandleRow")).reverse().forEach(row => row.remove())
+			document.body.append(...fileList)
+
+		}
+
+	</script>
+
+	</html>
